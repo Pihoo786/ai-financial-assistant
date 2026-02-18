@@ -6,6 +6,7 @@ import re
 from PIL import Image
 import io
 
+
 st.set_page_config(
     page_title="AI Financial Clarity Assistant",
     page_icon="💰",
@@ -57,6 +58,14 @@ for key, val in {
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
+
+def convert_pdf_to_jpeg(pdf_bytes):
+    import fitz  # pymupdf
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    page = doc[0]  # first page only
+    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for clarity
+    img_bytes = pix.tobytes("jpeg")
+    return img_bytes
 
 def convert_to_jpeg(image_bytes):
     img = Image.open(io.BytesIO(image_bytes))
@@ -229,7 +238,11 @@ with tab1:
 
         if analyze_btn and uploaded_file:
             with st.spinner("Nova is analyzing your receipt..."):
-                image_bytes = uploaded_file.read()
+                file_bytes = uploaded_file.read()
+                if uploaded_file.type == "application/pdf":
+                    image_bytes = convert_pdf_to_jpeg(file_bytes)
+                else:
+                    image_bytes = file_bytes
                 analysis = analyze_receipt(image_bytes)
                 total = extract_total(analysis)
                 category = extract_category(analysis)
