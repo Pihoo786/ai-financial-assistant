@@ -59,23 +59,24 @@ for key, val in {
     if key not in st.session_state:
         st.session_state[key] = val
 
-def convert_pdf_to_jpeg(pdf_bytes):
-    import fitz  # pymupdf
+def get_pdf_pages_as_jpeg(pdf_bytes):
+    import fitz
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    page = doc[0]  # first page only
-    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for clarity
-    img_bytes = pix.tobytes("jpeg")
-    return img_bytes
+    pages = []
+    for page in doc:
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+        pages.append(pix.tobytes("jpeg"))
+    return pages
 
-def convert_to_jpeg(image_bytes):
-    img = Image.open(io.BytesIO(image_bytes))
+def convert_to_jpeg(file_bytes):
+    img = Image.open(io.BytesIO(file_bytes))
     img = img.convert("RGB")
     buffer = io.BytesIO()
     img.save(buffer, format="JPEG")
     return buffer.getvalue()
 
-def analyze_receipt(image_bytes):
-    jpeg_bytes = convert_to_jpeg(image_bytes)
+def analyze_receipt(file_bytes):
+    jpeg_bytes = convert_to_jpeg(file_bytes)
     image_base64 = base64.b64encode(jpeg_bytes).decode('utf-8')
     message = {
         "role": "user",
@@ -108,17 +109,21 @@ Keep the tone friendly and encouraging."""}
     return json.loads(response["body"].read())["output"]["message"]["content"][0]["text"]
 
 def extract_total(text):
-    match = re.search(r'₹\s*([\d,]+\.?\d*)', text)
-    return float(match.group(1).replace(',', '')) if match else 0.0
+    # Sum ALL amounts found in the text
+    matches = re.findall(r'₹\s*([\d,]+\.?\d*)', text)
+    if not matches:
+        return 0.0
+    # Return the largest value (most likely the grand total)
+    return max(float(m.replace(',', '')) for m in matches)
 
 def extract_category(text):
-    match = re.search(r'\*\*📂 Category:\*\*\s*(.+)', text)
-    if match:
-        cat = match.group(1).strip()
-        for c in ["Food", "Transport", "Shopping", "Entertainment", "Health", "Other"]:
-            if c.lower() in cat.lower():
-                return c
-    return "Other"
+    # Find all categories mentioned and pick most common
+    categories = ["Food", "Transport", "Shopping", "Entertainment", "Health", "Other"]
+    found = []
+    for c in categories:
+        if c.lower() in text.lower():
+            found.append(c)
+    return found[0] if found else "Other"
 
 def get_spending_score(history):
     summary = "\n".join([f"Receipt {i+1}: {r['name']}, ₹{r['total']}, Category: {r['category']}" 
@@ -230,9 +235,12 @@ with tab1:
 
     with col1:
         st.markdown("### Upload Receipt")
-        uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "avif", "webp"])
+        uploaded_file = st.file_uploader("Choose an image or PDF", type=["jpg", "jpeg", "png", "avif", "webp", "pdf"])
         if uploaded_file:
-            st.image(uploaded_file, use_container_width=True)
+            if uploaded_file.type == "application/pdf":
+                st.info("📄 PDF uploaded successfully!")
+            else:
+                st.image(uploaded_file, use_container_width=True)
 
         analyze_btn = st.button("🔍 Analyze My Spending", use_container_width=True)
 
@@ -240,10 +248,17 @@ with tab1:
             with st.spinner("Nova is analyzing your receipt..."):
                 file_bytes = uploaded_file.read()
                 if uploaded_file.type == "application/pdf":
-                    image_bytes = convert_pdf_to_jpeg(file_bytes)
+                    pages = get_pdf_pages_as_jpeg(file_bytes)
+                    if len(pages) > 10:
+                        st.warning(f"PDF has {len(pages)} pages. Analyzing first 10 only.")
+                        pages = pages[:10]
+                    all_analysis = []
+                    for i, page_bytes in enumerate(pages):
+                        analysis = analyze_receipt(page_bytes)
+                        all_analysis.append(f"**Page {i+1}:**\n{analysis}")
+                    analysis = "\n\n---\n\n".join(all_analysis)
                 else:
-                    image_bytes = file_bytes
-                analysis = analyze_receipt(image_bytes)
+                    analysis = analyze_receipt(file_bytes)
                 total = extract_total(analysis)
                 category = extract_category(analysis)
                 st.session_state.last_analysis = analysis
