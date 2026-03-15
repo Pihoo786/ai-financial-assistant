@@ -47,7 +47,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
+import os
+
+client = boto3.client(
+    service_name="bedrock-runtime",
+    region_name="us-east-1",
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
+)
 
 # Session state
 for key, val in {
