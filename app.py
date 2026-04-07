@@ -18,7 +18,7 @@ from datetime import datetime
 # DynamoDB client
 dynamodb = boto3.resource(
     'dynamodb',
-    region_name='us-east-1',
+    region_name='ap-southeast-2',
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
