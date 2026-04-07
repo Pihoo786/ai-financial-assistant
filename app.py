@@ -529,37 +529,52 @@ with tab2:
             st.session_state.chat_messages.append({"role": "user", "content": question})
             st.session_state.chat_messages.append({"role": "assistant", "content": answer})
             st.rerun()
-
 with tab3:
     st.markdown("### 🗂️ All Receipts")
 
     if not st.session_state.history:
         st.info("No receipts analyzed yet!")
     else:
-        # Category chart
+        # 📊 Category chart
         try:
             import pandas as pd
             cat_data = {}
             for r in st.session_state.history:
                 cat_data[r["category"]] = cat_data.get(r["category"], 0) + r["total"]
+
             df = pd.DataFrame(list(cat_data.items()), columns=["Category", "Amount"])
             st.markdown("#### Spending by Category")
             st.bar_chart(df.set_index("Category"))
         except:
             pass
 
+        # 📄 Receipt list
         for i, record in enumerate(reversed(st.session_state.history)):
             with st.expander(f"📄 {record['name']} — ₹{record['total']:.2f} ({record['category']})"):
-                if st.button(f"🗑️ Delete", key=record["timestamp"]):
-                    success = delete_receipt(st.session_state.session_id, record["timestamp"])
-                if success:
-                    st.success("Deleted!")
-                    st.session_state.history = [
-                        r for r in st.session_state.history
-                        if r["timestamp"] != record["timestamp"]
-                        ]
-                    st.rerun()
-                st.markdown(record["analysis"])
 
-st.divider()
-st.markdown("<center><small>Powered by Amazon Nova on AWS Bedrock</small></center>", unsafe_allow_html=True)
+                # Show analysis FIRST
+                st.markdown(record.get("analysis", ""))
+
+                # 🗑️ Safe delete
+                if record.get("timestamp"):
+                    if st.button("🗑️ Delete", key=record["timestamp"]):
+
+                        success = delete_receipt(
+                            st.session_state.session_id,
+                            record["timestamp"]
+                        )
+
+                        if success:
+                            st.success("Deleted!")
+
+                            st.session_state.history = [
+                                r for r in st.session_state.history
+                                if r.get("timestamp") != record["timestamp"]
+                            ]
+
+                            st.rerun()
+                        else:
+                            st.error("Delete failed")
+
+                else:
+                    st.warning("Old record (cannot delete)")
