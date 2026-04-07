@@ -26,13 +26,13 @@ def login(email, password):
             AuthParameters={
                 'USERNAME': email,
                 'PASSWORD': password,
-                'SECRET_HASH': get_secret_hash(email)
-                },
-    ClientId=COGNITO_CLIENT_ID
-)
-        return response['AuthenticationResult']['AccessToken']
+                'SECRET_HASH': get_secret_hash(email)   # keep this if using secret
+            },
+            ClientId=COGNITO_CLIENT_ID
+        )
+        return True, response['AuthenticationResult']['AccessToken']
     except Exception as e:
-        return None
+        return False, str(e)
 
 def signup(email, password):
     try:
@@ -176,14 +176,14 @@ for key, val in {
             email = st.text_input("Email", key="login_email")
             password = st.text_input("Password", type="password", key="login_password")
             if st.button("Login", use_container_width=True):
-                token = login(email, password)
-                if token:
+                success, result = login(email, password)
+                if success:
                     st.session_state.logged_in = True
                     st.session_state.user_email = email
                     st.session_state.session_id = email
                     st.rerun()
                 else:
-                    st.error("Invalid email or password!")
+                    st.error(result)
     
         with auth_tab2:
             st.markdown("### Create account")
