@@ -12,6 +12,34 @@ client = boto3.client(
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
+import uuid
+from datetime import datetime
+
+# DynamoDB client
+dynamodb = boto3.resource(
+    'dynamodb',
+    region_name='us-east-1',
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
+)
+table = dynamodb.Table('financial_assistant')
+
+# Generate session ID if not exists
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+def save_to_dynamo(name, analysis, total, category):
+    try:
+        table.put_item(Item={
+            'session_id': st.session_state.session_id,
+            'timestamp': datetime.now().isoformat(),
+            'receipt_name': name,
+            'analysis': analysis,
+            'total': str(total),
+            'category': category
+        })
+    except Exception as e:
+        st.warning(f"Could not save to database: {e}")
 st.set_page_config(
     page_title="AI Financial Clarity Assistant",
     page_icon="💰",
@@ -278,6 +306,7 @@ with tab1:
                     "total": total,
                     "category": category
                 })
+                save_to_dynamo(uploaded_file.name, analysis, total, category)
             st.success("✅ Analysis complete!")
         elif analyze_btn:
             st.warning("Please upload a receipt first!")
