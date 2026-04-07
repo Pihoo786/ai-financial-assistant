@@ -18,19 +18,7 @@ cognito = boto3.client(
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
-if st.button("Test DB Save"):
-    try:
-        table.put_item(Item={
-            'session_id': 'test123',
-            'timestamp': 'test123',
-            'receipt_name': 'test',
-            'analysis': 'test',
-            'total': '100',
-            'category': 'Food'
-        })
-        st.success("Saved!")
-    except Exception as e:
-        st.error(e)
+
 
 def login(email, password):
     try:
@@ -395,6 +383,22 @@ with st.sidebar:
             for key in ["history", "last_analysis", "chat_messages", "spending_score"]:
                 st.session_state[key] = [] if key != "last_analysis" and key != "spending_score" else None
             st.rerun()
+
+if st.button("Test DB Save"):
+    try:
+        table.put_item(Item={
+            'session_id': 'test123',
+            'timestamp': 'test123',
+            'receipt_name': 'test',
+            'analysis': 'test',
+            'total': '100',
+            'category': 'Food'
+        })
+        st.success("Saved!")
+    except Exception as e:
+        st.error(e)
+
+
 
 # ── MAIN CONTENT ──
 tab1, tab2, tab3 = st.tabs(["📤 Analyze Receipt", "💬 Chat with Nova", "🗂️ History & Charts"])
