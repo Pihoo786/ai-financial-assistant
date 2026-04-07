@@ -18,6 +18,19 @@ cognito = boto3.client(
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
+if st.button("Test DB Save"):
+    try:
+        table.put_item(Item={
+            'session_id': 'test123',
+            'timestamp': 'test123',
+            'receipt_name': 'test',
+            'analysis': 'test',
+            'total': '100',
+            'category': 'Food'
+        })
+        st.success("Saved!")
+    except Exception as e:
+        st.error(e)
 
 def login(email, password):
     try:
@@ -85,6 +98,8 @@ if "session_id" not in st.session_state:
 
 def save_to_dynamo(name, analysis, total, category):
     try:
+        print("Saving to DynamoDB...")   # 👈 NEW
+
         table.put_item(Item={
             'session_id': st.session_state.session_id,
             'timestamp': datetime.now().isoformat(),
@@ -93,13 +108,12 @@ def save_to_dynamo(name, analysis, total, category):
             'total': str(total),
             'category': category
         })
+
+        print("Saved successfully!")     # 👈 NEW
+
     except Exception as e:
-        st.warning(f"Could not save to database: {e}")
-st.set_page_config(
-    page_title="AI Financial Clarity Assistant",
-    page_icon="💰",
-    layout="wide"
-)
+        print("DYNAMO ERROR:", e)        # 👈 NEW
+        st.error(f"DB Error: {e}")       # 👈 NEW
 def get_secret_hash(username):
     message = username + COGNITO_CLIENT_ID
     dig = hmac.new(
