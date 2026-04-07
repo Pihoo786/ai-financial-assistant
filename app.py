@@ -6,6 +6,58 @@ import re
 from PIL import Image
 import io
 import os
+import hmac
+import hashlib
+
+COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID")
+COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
+
+cognito = boto3.client(
+    'cognito-idp',
+    region_name='ap-southeast-2',
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
+)
+
+def login(email, password):
+    try:
+        response = cognito.initiate_auth(
+            AuthFlow='USER_PASSWORD_AUTH',
+            AuthParameters={
+                'USERNAME': email,
+                'PASSWORD': password
+            },
+            ClientId=COGNITO_CLIENT_ID
+        )
+        return response['AuthenticationResult']['AccessToken']
+    except Exception as e:
+        return None
+
+def signup(email, password):
+    try:
+        cognito.sign_up(
+            ClientId=COGNITO_CLIENT_ID,
+            Username=email,
+            Password=password,
+            UserAttributes=[{'Name': 'email', 'Value': email}]
+        )
+        return True, "Check your email to verify your account!"
+    except Exception as e:
+        return False, str(e)
+
+def confirm_signup(email, code):
+    try:
+        cognito.confirm_sign_up(
+            ClientId=COGNITO_CLIENT_ID,
+            Username=email,
+            ConfirmationCode=code
+        )
+        return True
+    except Exception as e:
+        return False
+
+
+
 client = boto3.client(
     service_name="bedrock-runtime",
     region_name="us-east-1",
@@ -95,6 +147,53 @@ for key, val in {
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = None
+
+    if not st.session_state.logged_in:
+        st.title("💰 AI Financial Clarity Assistant")
+        st.divider()
+    
+        auth_tab1, auth_tab2 = st.tabs(["Login", "Sign Up"])
+    
+        with auth_tab1:
+            st.markdown("### Welcome back!")
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Login", use_container_width=True):
+                token = login(email, password)
+                if token:
+                    st.session_state.logged_in = True
+                    st.session_state.user_email = email
+                    st.session_state.session_id = email
+                    st.rerun()
+                else:
+                    st.error("Invalid email or password!")
+    
+        with auth_tab2:
+            st.markdown("### Create account")
+            new_email = st.text_input("Email", key="signup_email")
+            new_password = st.text_input("Password (min 8 chars)", type="password", key="signup_password")
+        
+            if st.button("Sign Up", use_container_width=True):
+                success, msg = signup(new_email, new_password)
+                if success:
+                    st.session_state.pending_verify = new_email
+                    st.success(msg)
+                else:
+                    st.error(msg)
+        
+            if "pending_verify" in st.session_state:
+                code = st.text_input("Enter verification code from email")
+                if st.button("Verify"):
+                    if confirm_signup(st.session_state.pending_verify, code):
+                        st.success("Account verified! Please login.")
+                    else:
+                        st.error("Invalid code, try again!")
+    
+        st.stop()
 
 def get_pdf_pages_as_jpeg(pdf_bytes):
     import fitz
@@ -229,6 +328,12 @@ if st.session_state.history:
     st.divider()
 
 # ── BUDGET GOAL ──
+with st.sidebar:
+    st.markdown(f"👤 **{st.session_state.user_email}**")
+    if st.button("Logout"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 with st.sidebar:
     st.markdown("### 🎯 Budget Goal")
     budget = st.number_input("Set monthly budget (₹)", min_value=0, value=5000, step=100)
