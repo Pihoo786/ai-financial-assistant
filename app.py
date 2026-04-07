@@ -268,15 +268,28 @@ Keep the tone friendly and encouraging."""}
     )
     return json.loads(response["body"].read())["output"]["message"]["content"][0]["text"]
 
+def delete_receipt(session_id, timestamp):
+    try:
+        table.delete_item(
+            Key={
+                'session_id': session_id,
+                'timestamp': timestamp
+            }
+        )
+        print("Deleted successfully!")
+        return True
+    except Exception as e:
+        print("DELETE ERROR:", e)
+        return False
 
-def save_to_dynamo(name, analysis, total, category):
+def save_to_dynamo(name, analysis, total, category, timestamp):
     try:
         print("Saving to DynamoDB...")
 
         response = table.put_item(
             Item={
                 'session_id': str(st.session_state.session_id),
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': timestamp,
                 'receipt_name': name,
                 'analysis': analysis,
                 'total': str(total),
@@ -290,6 +303,7 @@ def save_to_dynamo(name, analysis, total, category):
     except Exception as e:
         print("DYNAMO ERROR:", e)
         st.error(f"DB Error: {e}")
+
 
 def extract_total(text):
     # Sum ALL amounts found in the text
@@ -416,20 +430,6 @@ with st.sidebar:
                 st.session_state[key] = [] if key != "last_analysis" and key != "spending_score" else None
             st.rerun()
 
-if st.button("Test DB Save"):
-    try:
-        table.put_item(Item={
-            'session_id': 'test123',
-            'timestamp': 'test123',
-            'receipt_name': 'test',
-            'analysis': 'test',
-            'total': '100',
-            'category': 'Food'
-        })
-        st.success("Saved!")
-    except Exception as e:
-        st.error(e)
-
 
 
 # ── MAIN CONTENT ──
@@ -473,17 +473,19 @@ with tab1:
                     if analysis:
                         total = extract_total(analysis)
                         category = extract_category(analysis)
+                        timestamp = datetime.now().isoformat()
                         st.session_state.last_analysis = analysis
                         st.session_state.spending_score = None
                         st.session_state.history.append({
                         "name": uploaded_file.name,
                         "analysis": analysis,
                         "total": total,
-                        "category": category
+                        "category": category,
+                        "timestamp": timestamp
                     })
                     
                         print("About to save receipt...")
-                        save_to_dynamo(uploaded_file.name, analysis, total, category)
+                        save_to_dynamo(uploaded_file.name, analysis, total, category, timestamp)
                         print("Save function called!")
                     
                     else:
@@ -547,6 +549,15 @@ with tab3:
 
         for i, record in enumerate(reversed(st.session_state.history)):
             with st.expander(f"📄 {record['name']} — ₹{record['total']:.2f} ({record['category']})"):
+                if st.button(f"🗑️ Delete", key=record["timestamp"]):
+                    success = delete_receipt(st.session_state.session_id, record["timestamp"])
+                if success:
+                    st.success("Deleted!")
+                    st.session_state.history = [
+                        r for r in st.session_state.history
+                        if r["timestamp"] != record["timestamp"]
+                        ]
+                    st.rerun()
                 st.markdown(record["analysis"])
 
 st.divider()
