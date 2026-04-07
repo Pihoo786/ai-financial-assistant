@@ -30,18 +30,20 @@ st.markdown("""
     .metric-label {font-size: 0.85rem; color: #888; margin-bottom: 4px;}
     .metric-value {font-size: 1.8rem; font-weight: 800; color: #1a1a2e;}
     .chat-msg-user {
-        background: #e8f4fd;
+        background: #1a4a6b;
+        color: white;
         border-radius: 10px;
         padding: 0.7rem 1rem;
         margin: 0.3rem 0;
         text-align: right;
-    }
+        }
     .chat-msg-ai {
-        background: #f0faf0;
+        background: #1a3a2a;
+        color: white;
         border-radius: 10px;
         padding: 0.7rem 1rem;
         margin: 0.3rem 0;
-    }
+        }
     .score-box {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 12px;
