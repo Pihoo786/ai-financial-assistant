@@ -446,25 +446,24 @@ with tab1:
                         st.error(f"Analysis failed: {e}")
                         print("ANALYSIS ERROR:", e)
                         analysis = None
-                total = extract_total(analysis)
-                category = extract_category(analysis)
-                st.session_state.last_analysis = analysis
-                st.session_state.spending_score = None
-                st.session_state.history.append({
-                    "name": uploaded_file.name,
-                    "analysis": analysis,
-                    "total": total,
-                    "category": category
-                })
-                print("About to save receipt...") 
-                if analysis:
-                    print("About to save receipt...")
-                    save_to_dynamo(uploaded_file.name, analysis, total, category)
-                    print("Save function called!")
+                    if analysis:
+                        total = extract_total(analysis)
+                        category = extract_category(analysis)
+                        st.session_state.last_analysis = analysis
+                        st.session_state.spending_score = None
+                        st.session_state.history.append({
+                        "name": uploaded_file.name,
+                        "analysis": analysis,
+                        "total": total,
+                        "category": category
+                    })
                     
-                else:
-                    print("Skipping save because analysis failed")
-            print("Save function called!") 
+                        print("About to save receipt...")
+                        save_to_dynamo(uploaded_file.name, analysis, total, category)
+                        print("Save function called!")
+                    
+                    else:
+                        print("Analysis failed → skipping everything")   
             st.success("✅ Analysis complete!")
         elif analyze_btn:
             st.warning("Please upload a receipt first!")
