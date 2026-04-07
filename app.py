@@ -132,6 +132,29 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def load_user_data(session_id):
+    try:
+        response = table.query(
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('session_id').eq(session_id)
+        )
+
+        items = response.get('Items', [])
+
+        history = []
+        for item in items:
+            history.append({
+                "name": item.get("receipt_name", ""),
+                "analysis": item.get("analysis", ""),
+                "total": float(item.get("total", 0)),
+                "category": item.get("category", "Other")
+            })
+
+        return history
+
+    except Exception as e:
+        print("LOAD ERROR:", e)
+        return []
+    
 
 
 
@@ -166,6 +189,7 @@ for key, val in {
                     st.session_state.logged_in = True
                     st.session_state.user_email = email
                     st.session_state.session_id = email
+                    st.session_state.history = load_user_data(email) 
                     st.rerun()
                 else:
                     st.error(result)
