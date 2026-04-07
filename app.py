@@ -5,8 +5,13 @@ import base64
 import re
 from PIL import Image
 import io
-
-
+import os
+client = boto3.client(
+    service_name="bedrock-runtime",
+    region_name="us-east-1",
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
+)
 st.set_page_config(
     page_title="AI Financial Clarity Assistant",
     page_icon="💰",
@@ -47,14 +52,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-import os
 
-client = boto3.client(
-    service_name="bedrock-runtime",
-    region_name="us-east-1",
-    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
-)
+
+
 
 # Session state
 for key, val in {
