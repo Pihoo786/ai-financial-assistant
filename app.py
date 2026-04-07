@@ -266,7 +266,7 @@ def save_to_dynamo(name, analysis, total, category):
     except Exception as e:
         print("DYNAMO ERROR:", e)
         st.error(f"DB Error: {e}")
-        
+
 def extract_total(text):
     # Sum ALL amounts found in the text
     matches = re.findall(r'₹\s*([\d,]+\.?\d*)', text)
@@ -439,7 +439,13 @@ with tab1:
                         all_analysis.append(f"**Page {i+1}:**\n{analysis}")
                     analysis = "\n\n---\n\n".join(all_analysis)
                 else:
-                    analysis = analyze_receipt(file_bytes)
+                    try:
+                        analysis = analyze_receipt(file_bytes)
+                        print("Analysis done!")   # 👈 DEBUG
+                    except Exception as e:
+                        st.error(f"Analysis failed: {e}")
+                        print("ANALYSIS ERROR:", e)
+                        analysis = None
                 total = extract_total(analysis)
                 category = extract_category(analysis)
                 st.session_state.last_analysis = analysis
@@ -451,8 +457,14 @@ with tab1:
                     "category": category
                 })
                 print("About to save receipt...") 
-                save_to_dynamo(uploaded_file.name, analysis, total, category)
-                print("Save function called!") 
+                if analysis:
+                    print("About to save receipt...")
+                    save_to_dynamo(uploaded_file.name, analysis, total, category)
+                    print("Save function called!")
+                    
+                else:
+                    print("Skipping save because analysis failed")
+            print("Save function called!") 
             st.success("✅ Analysis complete!")
         elif analyze_btn:
             st.warning("Please upload a receipt first!")
