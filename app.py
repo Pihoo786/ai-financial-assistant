@@ -25,10 +25,11 @@ def login(email, password):
             AuthFlow='USER_PASSWORD_AUTH',
             AuthParameters={
                 'USERNAME': email,
-                'PASSWORD': password
-            },
-            ClientId=COGNITO_CLIENT_ID
-        )
+                'PASSWORD': password,
+                'SECRET_HASH': get_secret_hash(email)
+                },
+    ClientId=COGNITO_CLIENT_ID
+)
         return response['AuthenticationResult']['AccessToken']
     except Exception as e:
         return None
@@ -39,6 +40,7 @@ def signup(email, password):
             ClientId=COGNITO_CLIENT_ID,
             Username=email,
             Password=password,
+            SecretHash=get_secret_hash(email),
             UserAttributes=[{'Name': 'email', 'Value': email}]
         )
         return True, "Check your email to verify your account!"
@@ -50,8 +52,9 @@ def confirm_signup(email, code):
         cognito.confirm_sign_up(
             ClientId=COGNITO_CLIENT_ID,
             Username=email,
-            ConfirmationCode=code
-        )
+            ConfirmationCode=code,
+            SecretHash=get_secret_hash(email)
+            )
         return True
     except Exception as e:
         return False
@@ -97,6 +100,16 @@ st.set_page_config(
     page_icon="💰",
     layout="wide"
 )
+def get_secret_hash(username):
+    message = username + COGNITO_CLIENT_ID
+    dig = hmac.new(
+        os.environ.get("COGNITO_CLIENT_SECRET").encode('utf-8'),
+        msg=message.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).digest()
+    return base64.b64encode(dig).decode()
+
+
 
 st.markdown("""
     <style>
