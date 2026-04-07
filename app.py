@@ -84,24 +84,7 @@ table = dynamodb.Table('financial_assistant')
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
-def save_to_dynamo(name, analysis, total, category):
-    try:
-        print("Saving to DynamoDB...")   # 👈 NEW
 
-        table.put_item(Item={
-            'session_id': st.session_state.session_id,
-            'timestamp': datetime.now().isoformat(),
-            'receipt_name': name,
-            'analysis': analysis,
-            'total': str(total),
-            'category': category
-        })
-
-        print("Saved successfully!")     # 👈 NEW
-
-    except Exception as e:
-        print("DYNAMO ERROR:", e)        # 👈 NEW
-        st.error(f"DB Error: {e}")       # 👈 NEW
 def get_secret_hash(username):
     message = username + COGNITO_CLIENT_ID
     dig = hmac.new(
@@ -235,6 +218,8 @@ def analyze_receipt(file_bytes):
             {"image": {"format": "jpeg", "source": {"bytes": image_base64}}},
             {"text": """You are a friendly financial assistant. Analyze this receipt and respond in this exact format:
 
+             
+             
 **🧾 Items Purchased:**
 List each item with its price on a new line
 
@@ -259,6 +244,29 @@ Keep the tone friendly and encouraging."""}
     )
     return json.loads(response["body"].read())["output"]["message"]["content"][0]["text"]
 
+
+def save_to_dynamo(name, analysis, total, category):
+    try:
+        print("Saving to DynamoDB...")
+
+        response = table.put_item(
+            Item={
+                'session_id': str(st.session_state.session_id),
+                'timestamp': datetime.now().isoformat(),
+                'receipt_name': name,
+                'analysis': analysis,
+                'total': str(total),
+                'category': category
+            }
+        )
+
+        print("Saved successfully!")
+        print("DynamoDB response:", response)
+
+    except Exception as e:
+        print("DYNAMO ERROR:", e)
+        st.error(f"DB Error: {e}")
+        
 def extract_total(text):
     # Sum ALL amounts found in the text
     matches = re.findall(r'₹\s*([\d,]+\.?\d*)', text)
@@ -442,7 +450,9 @@ with tab1:
                     "total": total,
                     "category": category
                 })
+                print("About to save receipt...") 
                 save_to_dynamo(uploaded_file.name, analysis, total, category)
+                print("Save function called!") 
             st.success("✅ Analysis complete!")
         elif analyze_btn:
             st.warning("Please upload a receipt first!")
