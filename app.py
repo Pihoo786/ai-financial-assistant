@@ -146,7 +146,8 @@ def load_user_data(session_id):
                 "name": item.get("receipt_name", ""),
                 "analysis": item.get("analysis", ""),
                 "total": float(item.get("total", 0)),
-                "category": item.get("category", "Other")
+                "category": item.get("category", "Other"),
+                "timestamp": item.get("timestamp", "")
             })
 
         return history
